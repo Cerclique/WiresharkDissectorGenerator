@@ -3,25 +3,19 @@ import fs from 'fs'
 
 const v = new jsonschema.Validator()
 
+const rawSchema = fs.readFileSync('schema.json');
+const schema = JSON.parse(rawSchema);
+
+const rawDissector = fs.readFileSync('dissector.json');
+const dissector = JSON.parse(rawDissector);
+
+const validationResult = v.validate(dissector, schema);
+console.log(validationResult.errors.length);
 /*
-const schema = {
-    "id" : "/simpleShema",
-    "type" : "object",
-    "properties" : {
-        "name": { "type" : "string" },
-        "age" : { "type" : "number", "enum": [5, 10] }
-    },
-    "required" : ["name", "age"]
-}
+const rawCodeTemplate = fs.readFileSync('code_template');
+const codeTemlate = rawCodeTemplate.toString();
+
+const res = codeTemlate.split("%PROTOCOL_NAME%").join(dissector.name);
+
+console.log(res);
 */
-
-const toast = {
-    "name" : "aa",
-    "connection" : { },
-    "data" : { }
-}
-
-const rawData = fs.readFileSync('schema.json');
-const schema = JSON.parse(rawData);
-
-console.log(v.validate(toast, schema));

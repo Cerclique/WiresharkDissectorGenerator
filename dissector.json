@@ -1,0 +1,36 @@
+{
+    "name" : "customProtocol",
+    "connection" : {
+        "protocol" : "udp",
+        "ports" : [60001]
+    },
+    "data" : [
+        {
+            "name" : "item_one",
+            "type" : "uint8",
+            "filter" : "customProtocol.item_one",
+            "short_description" : "item one description",
+            "base" : "DEC",
+            "offset" : 0,
+            "size" : 1
+        },
+        {
+            "name" : "item_two",
+            "type" : "uint32",
+            "filter" : "customProtocol.item_two",
+            "short_description" : "item two description",
+            "base" : "DEC",
+            "offset" : 1,
+            "size" : 4
+        },
+        {
+            "name" : "item_three",
+            "type" : "uint32",
+            "filter" : "customProtocol.item_three",
+            "short_description" : "item three description",
+            "base" : "DEC",
+            "offset" : 5,
+            "size" : 2
+        }
+    ]
+}
