@@ -1,7 +1,9 @@
 import jsonschema from 'jsonschema';
+import fs from 'fs'
 
 const v = new jsonschema.Validator()
 
+/*
 const schema = {
     "id" : "/simpleShema",
     "type" : "object",
@@ -11,10 +13,15 @@ const schema = {
     },
     "required" : ["name", "age"]
 }
+*/
 
 const toast = {
     "name" : "aa",
-    "age" : "12"
+    "connection" : { },
+    "data" : { }
 }
+
+const rawData = fs.readFileSync('schema.json');
+const schema = JSON.parse(rawData);
 
 console.log(v.validate(toast, schema));
