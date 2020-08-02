@@ -1,0 +1,12 @@
+{
+  "name": "WiresharkDissectorGenerator",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:Cerclique/WiresharkDissectorGenerator.git",
+  "author": "cerclique <aurelien.vernizeau@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "jsonschema": "^1.2.6"
+  },
+  "type": "module"
+}
