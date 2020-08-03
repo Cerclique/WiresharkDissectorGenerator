@@ -5,7 +5,7 @@
     Description: Wireshark Dissector for %PROTOCOL_NAME%
 ]]--
 
-%PROTOCOL_NAME% = Proto("%PROTOCOL_NAME%", "%PROTOCOL_DESCRIPTION% Protocol")
+%PROTOCOL_NAME% = Proto("%PROTOCOL_NAME%", "%PROTOCOL_NAME% Protocol")
 
 -- Fields Declaration Section
 %FIELDS_DECLARATION%
