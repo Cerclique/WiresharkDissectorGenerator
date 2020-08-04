@@ -3,17 +3,24 @@ import fs from 'fs'
 
 
 
-const main = () => {
-    const v = new jsonschema.Validator()
-
-    const rawSchema = fs.readFileSync('schema.json');
+const main = (rawSchemaPath, rawDissectorPath) => {
+    
+    const rawSchema = fs.readFileSync(rawSchemaPath, err => {
+        throw(err);
+    });
     const schema = JSON.parse(rawSchema);
 
-    const rawDissector = fs.readFileSync('dissector.json');
+    const rawDissector = fs.readFileSync(rawDissectorPath, err => {
+        throw(err);
+    });
     const dissector = JSON.parse(rawDissector);
 
+    
+    const v = new jsonschema.Validator()
     const validationResult = v.validate(dissector, schema);
-    // console.log(validationResult.errors.length);
+    if (validationResult.errors.length > 0) {
+        console.error(validationResult.errors);
+    }
 
     const rawCodeTemplate = fs.readFileSync('code_template');
     const codeTemplate = rawCodeTemplate.toString();
@@ -21,11 +28,22 @@ const main = () => {
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     const projectName = "WiresharkDissectorGenerator";
 
-    let res = codeTemplate.split("%PROJECT_NAME%").join(projectName);
-    res = res.split("%PROTOCOL_NAME%").join(dissector.name);
-    res = res.split("%DATE%").join((new Date()).toLocaleDateString('fr-FR', options));
+    // * %PROJECT_NAME%
+    let outputBuffer = codeTemplate.split("%PROJECT_NAME%").join(projectName);
+
+    // * %PROTOCOL_NAME%
+    outputBuffer = outputBuffer.split("%PROTOCOL_NAME%").join(dissector.name);
+
+    // * %DATE%
+    outputBuffer = outputBuffer.split("%DATE%").join((new Date()).toLocaleDateString('fr-FR', options));
 
 
+    /* 
+        * %FIELDS_DECLARATION%
+        * %FIELDS_LIST%
+        * %LOCAL_VAR_DECLARATION%
+        * %SUBTREE_POPULATION%
+    */
     let fieldDeclarationBuffer = "";
     let fieldListBuffer = "";
     let localVariableDeclarationBuffer = "";
@@ -34,42 +52,40 @@ const main = () => {
     for (const element of dissector.data) {
         const full_filter = `${dissector.name}.${element.filter}`;
         fieldDeclarationBuffer += `${element.filter}=ProtoField.${element.type}("${full_filter}", "${element.short_description}", base.${element.base})\n`
-
-        fieldListBuffer += `\t${element.filter},\n`
-
-        localVariableDeclarationBuffer += `local ${element.filter} = buffer(${element.offset}, ${element.size})\n`
-
-        subtreePopulationBuffer += `\tsubtree:add(${element.filter}, ${element.name})\n`
+        fieldListBuffer += `${element.filter},\n\t`
+        localVariableDeclarationBuffer += `local ${element.filter} = buffer(${element.offset}, ${element.size})\n\t`
+        subtreePopulationBuffer += `subtree:add(${element.filter}, ${element.name})\n\t`
     }
 
+    outputBuffer = outputBuffer.split("%FIELDS_LIST%").join(fieldListBuffer);
+    outputBuffer = outputBuffer.split("%FIELDS_DECLARATION%").join(fieldDeclarationBuffer);
+    outputBuffer = outputBuffer.split("%LOCAL_VAR_DECLARATION%").join(localVariableDeclarationBuffer);
+    outputBuffer = outputBuffer.split("%SUBTREE_POPULATION%").join(subtreePopulationBuffer);
+
+    
+    // * %PROTOCOL%
+    outputBuffer = outputBuffer.split("%PROTOCOL%").join(dissector.connection.protocol);
+
+    // * %PORTS%
     let portsBuffer = "";
 
     for (const element of dissector.connection.ports) {
         portsBuffer += `${dissector.connection.protocol}_port:add(${element}, ${dissector.name})\n`
     }
 
-    // local udp_port = DissectorTable.get("udp.port")
-    // udp_port:add(8888, myprotocol)
+    outputBuffer = outputBuffer.split("%PORTS%").join(portsBuffer);
 
-    // local %PROTOCOL%_port = DissectorTable.get("%PROTOCOL%.port")
-    // %PORTS%
-
-    // local sequence_counter = buffer(0,4)
-
-    // subtree:add(sequence_counter_field, sequence_counter)
-    //                FILTER                   NAME
-
-    // sequence_counter_field=ProtoField.uint32("myprotocol.sequence_counter_field","Sequence Counter",base.DEC)
-    // const buffer = `${dissector.data[0].filter}=ProtoField.${dissector.data[0].type}("${dissector.data[0].name}${dissector.data[0].filter}", "${dissector.data[0].short_description}", base.${dissector.data[0].base})`
-    console.log(fieldDeclarationBuffer);
-    console.log(fieldListBuffer);
-    console.log(localVariableDeclarationBuffer);
-    console.log(subtreePopulationBuffer);
-    console.log(portsBuffer);
-    // res = res.split("%FIELDS_DECLARATION%").join(buffer);
-    // console.log(res);
+    // * Write to output file
+    const outputFilename = `dissector_${dissector.name}.lua`;
+    fs.writeFileSync(outputFilename, outputBuffer, err => {
+        throw(err);
+    });
 }
 
-main();
+const cmdLineArguments = process.argv.slice(2);
+const rawSchemaPath = cmdLineArguments[0];
+const rawDissectorPath = cmdLineArguments[1];
+
+main(rawSchemaPath, rawDissectorPath);
 
 

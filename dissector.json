@@ -19,7 +19,7 @@
             "type" : "uint32",
             "filter" : "item_two_field",
             "short_description" : "item two description",
-            "base" : "BIN",
+            "base" : "DEC",
             "offset" : 1,
             "size" : 4
         },
