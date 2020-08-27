@@ -6,7 +6,8 @@
   "author": "cerclique <aurelien.vernizeau@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "jsonschema": "^1.2.6"
+    "jsonschema": "^1.2.6",
+    "minimist": "^1.2.5"
   },
   "type": "module"
 }

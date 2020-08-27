@@ -1,42 +1,74 @@
 import jsonschema from 'jsonschema';
-import fs from 'fs'
+import fs from 'fs';
+import minimist from 'minimist';
 
+/**  CONSTANTS **/
 
+const projectName = "WiresharkDissectorGenerator";
 
-const main = (rawSchemaPath, rawDissectorPath) => {
-    
-    const rawSchema = fs.readFileSync(rawSchemaPath, err => {
-        throw(err);
+const dateOptions = { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+};
+
+const timeOptions = { 
+    hour12: false
+}
+
+const defaultArgument = {
+    dissector : "example_dissector.json",
+    schema : "schema.json",
+    output : "dissector.lua"
+}
+
+const rawTemplatePath = './code_template';
+
+/** FUNCTIONS **/
+
+const FileRawtoJson = (filePath) => {
+    const rawFile = fs.readFileSync(filePath, err => {
+        throw (err);
     });
-    const schema = JSON.parse(rawSchema);
 
-    const rawDissector = fs.readFileSync(rawDissectorPath, err => {
-        throw(err);
-    });
-    const dissector = JSON.parse(rawDissector);
+    return JSON.parse(rawFile);
+}
 
+const ValidateDissectorFromSchema = (schema, dissector) => {
+    var isDissectorValid = true;
+
+    const validator = new jsonschema.Validator()
+    const validationResult = validator.validate(dissector, schema);
     
-    const v = new jsonschema.Validator()
-    const validationResult = v.validate(dissector, schema);
     if (validationResult.errors.length > 0) {
         console.error(validationResult.errors);
+        isDissectorValid = false;
     }
 
-    const rawCodeTemplate = fs.readFileSync('code_template');
-    const codeTemplate = rawCodeTemplate.toString();
+    return  isDissectorValid;
+}
 
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    const projectName = "WiresharkDissectorGenerator";
+const LoadRawTemplate = (filePath) => {
+    const rawCodeTemplate = fs.readFileSync(filePath, err => {
+        throw (err);
+    });
+    
+    return rawCodeTemplate.toString();
+}
+
+const GenerateDissectorFile = (rawTemplateBuffer, dissector) => {
 
     // * %PROJECT_NAME%
-    let outputBuffer = codeTemplate.split("%PROJECT_NAME%").join(projectName);
+    let outputBuffer = rawTemplateBuffer.split("%PROJECT_NAME%").join(projectName);
 
     // * %PROTOCOL_NAME%
     outputBuffer = outputBuffer.split("%PROTOCOL_NAME%").join(dissector.name);
 
     // * %DATE%
-    outputBuffer = outputBuffer.split("%DATE%").join((new Date()).toLocaleDateString('fr-FR', options));
-
+    const currentDate = new Date();
+    const dateBuffer = `${currentDate.toLocaleDateString([], dateOptions)} ${currentDate.toLocaleTimeString([], timeOptions)}`;
+    outputBuffer = outputBuffer.split("%DATE%").join(dateBuffer);
 
     /* 
         * %FIELDS_DECLARATION%
@@ -57,6 +89,11 @@ const main = (rawSchemaPath, rawDissectorPath) => {
         subtreePopulationBuffer += `subtree:add(${element.filter}, ${element.name})\n\t`
     }
 
+    /** This is just to make the final file pretty  **/
+    fieldDeclarationBuffer = fieldDeclarationBuffer.slice(0, fieldDeclarationBuffer.length - 1);
+    fieldListBuffer = fieldListBuffer.slice(0, fieldListBuffer.length - 2);
+    localVariableDeclarationBuffer = localVariableDeclarationBuffer.slice(0, localVariableDeclarationBuffer.length - 2);
+
     outputBuffer = outputBuffer.split("%FIELDS_LIST%").join(fieldListBuffer);
     outputBuffer = outputBuffer.split("%FIELDS_DECLARATION%").join(fieldDeclarationBuffer);
     outputBuffer = outputBuffer.split("%LOCAL_VAR_DECLARATION%").join(localVariableDeclarationBuffer);
@@ -75,17 +112,33 @@ const main = (rawSchemaPath, rawDissectorPath) => {
 
     outputBuffer = outputBuffer.split("%PORTS%").join(portsBuffer);
 
-    // * Write to output file
-    const outputFilename = `dissector_${dissector.name}.lua`;
-    fs.writeFileSync(outputFilename, outputBuffer, err => {
+    return outputBuffer;
+}
+
+const bufferToFile = (outputBuffer, filePath) => {
+    fs.writeFileSync(filePath, outputBuffer, err => {
         throw(err);
     });
 }
 
-const cmdLineArguments = process.argv.slice(2);
-const rawSchemaPath = cmdLineArguments[0];
-const rawDissectorPath = cmdLineArguments[1];
+const WiresharkDissectorGenerator = (args) => {
+    const schemaJSON = FileRawtoJson(args.schema);
+    const dissectorJSON = FileRawtoJson(args.dissector);
 
-main(rawSchemaPath, rawDissectorPath);
+    const isDataValid = ValidateDissectorFromSchema(schemaJSON, dissectorJSON);
 
+    if (isDataValid === false)
+        return;
 
+    const rawTemplateBuffer = LoadRawTemplate(rawTemplatePath);
+
+    const outputBuffer = GenerateDissectorFile(rawTemplateBuffer, dissectorJSON);
+
+    bufferToFile(outputBuffer, args.output);
+}
+
+/** MAIN **/
+
+const argsObject = minimist(process.argv.slice(2), { default : defaultArgument });
+
+WiresharkDissectorGenerator(argsObject);
